@@ -588,5 +588,12 @@ button {
     transform: scale(1.05);
     box-shadow: 0 4px 10px rgba(0,0,0,0.4);
   }
-  
+  html, body {
+  margin: 0;
+  padding: 0;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+}
+
       
