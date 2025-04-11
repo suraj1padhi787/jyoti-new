@@ -146,46 +146,6 @@
     document.getElementById('reply-indicator').style.display = 'none';
   }
 </script>
-<script>
-  let replyTo = null;
-  let replyTimeout;
-
-  // ✅ Attach events after DOM is loaded
-  document.addEventListener('DOMContentLoaded', () => {
-    document.querySelectorAll('.message').forEach(msg => {
-      const msgId = msg.dataset.id;
-      const msgText = msg.dataset.msg;
-
-      // 💻 Double Click for PC
-      msg.addEventListener('dblclick', () => {
-        setReply(msgId, msgText);
-      });
-
-      // 📱 Long Press for Mobile
-      msg.addEventListener('touchstart', () => {
-        replyTimeout = setTimeout(() => {
-          setReply(msgId, msgText);
-        }, 600); // long press threshold
-      });
-      msg.addEventListener('touchend', () => clearTimeout(replyTimeout));
-      msg.addEventListener('touchmove', () => clearTimeout(replyTimeout));
-    });
-  });
-
-  // ✅ Set Reply Helper
-  function setReply(id, text) {
-    replyTo = text;
-    const replyDiv = document.getElementById('reply-indicator');
-    replyDiv.innerHTML = `Replying to: ${text} <button id="reply-cancel" onclick="cancelReply()">✖</button>`;
-    replyDiv.style.display = 'block';
-  }
-
-  // ✅ Cancel reply
-  function cancelReply() {
-    replyTo = null;
-    document.getElementById('reply-indicator').style.display = 'none';
-  }
-</script>
 
   const socket = io();
   const user = '<%= user %>';
