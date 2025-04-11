@@ -393,6 +393,62 @@ recordBtn.addEventListener('click', async () => {
     mediaRecorder.stop();
   }
 });
+function attachReplySwipeHandlers() {
+  document.querySelectorAll('.message').forEach(msg => {
+    let startX = 0;
+
+    // For mobile swipe
+    msg.addEventListener('touchstart', e => {
+      startX = e.touches[0].clientX;
+    });
+
+    msg.addEventListener('touchend', e => {
+      const endX = e.changedTouches[0].clientX;
+      const diff = startX - endX;
+
+      if (diff > 50) { // Left swipe
+        const msgId = msg.dataset.id;
+        const msgText = msg.dataset.msg;
+        setReply(msgId, msgText);
+      }
+    });
+
+    // For desktop double click
+    msg.addEventListener('dblclick', () => {
+      const msgId = msg.dataset.id;
+      const msgText = msg.dataset.msg;
+      setReply(msgId, msgText);
+    });
+  });
+}
+
+function setReply(id, text) {
+  replyTo = id;
+  const replyIndicator = document.getElementById('reply-indicator');
+  replyIndicator.innerHTML = `Replying to: <b>${text}</b> <span id="reply-cancel">❌</span>`;
+  replyIndicator.style.display = 'block';
+
+  document.getElementById('reply-cancel').onclick = () => {
+    replyTo = null;
+    replyIndicator.style.display = 'none';
+  };
+}
+
+// After chat message append
+socket.on('chat', (data) => {
+  ...
+  messages.appendChild(el);
+  scrollToBottom();
+  attachReplySwipeHandlers(); // 🔁 Add this
+  ...
+});
+
+// Also on load:
+window.onload = () => {
+  scrollToBottom();
+  fetchStickers();
+  attachReplySwipeHandlers(); // ✅ Add this line
+};
 
 </script>
 
