@@ -136,6 +136,12 @@ io.on('connection', (socket) => {
         data.time = time;
         data.status = status;
         io.emit('chat', data);
+        if (Notification.permission === 'granted' && document.hidden) {
+  navigator.serviceWorker.getRegistration().then(reg => {
+    if (reg) {
+      reg.showNotification("Love se message aaya 💌", {
+        body: data.msg || '📷 Media sent',
+        icon: '/icons/app-icon.png'
       });
   });
 
