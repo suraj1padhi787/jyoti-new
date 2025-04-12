@@ -394,6 +394,47 @@ recordBtn.addEventListener('click', async () => {
   }
 });
 
+// 🟡 Swipe / Long-press / Double-click to Reply
+function showReplyPreview(text) {
+  const replyBox = document.getElementById('reply-indicator');
+  replyBox.innerHTML = `Replying to: <b>${text}</b> <button onclick="cancelReply()">❌</button>`;
+  replyBox.style.display = 'block';
+  replyTo = text;
+}
+
+function cancelReply() {
+  replyTo = null;
+  const replyBox = document.getElementById('reply-indicator');
+  replyBox.style.display = 'none';
+  replyBox.innerHTML = '';
+}
+
+// Auto-attach listener to every message (on load & new message)
+function attachReplyListeners() {
+  document.querySelectorAll('.message').forEach(msg => {
+    if (!msg.hasAttribute('data-listened')) {
+      msg.setAttribute('data-listened', 'true');
+      const msgText = msg.getAttribute('data-msg') || '(Media)';
+      msg.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        showReplyPreview(msgText);
+      });
+      msg.addEventListener('dblclick', () => {
+        showReplyPreview(msgText);
+      });
+    }
+  });
+}
+
+window.addEventListener('load', () => {
+  scrollToBottom();
+  attachReplyListeners();
+});
+
+socket.on('chat', (data) => {
+  // ... your existing code to append message ...
+  attachReplyListeners(); // 🔁 Add this here to enable reply on new messages
+});
 
 </script>
 
