@@ -512,21 +512,26 @@ socket.on('chat', (data) => {
     Notification.requestPermission();
   }
 
+  // Only show notification when app is in background
   socket.on("chat", function(data) {
     if (Notification.permission === "granted" && data.user !== "<%= user %>") {
-      navigator.serviceWorker.ready.then(reg => {
-        reg.showNotification("Love se message aaya 💌", {
-          body: `${data.user}: ${data.msg || 'Sent something'}`,
-          icon: "/icons/app-icon.png",
-          badge: "/icons/app-icon.png",
-          data: {
-            url: "/chat"
-          }
+      // ✅ Check if app is hidden (i.e. in background)
+      if (document.hidden) {
+        navigator.serviceWorker.ready.then(reg => {
+          reg.showNotification("Love se message aaya 💌", {
+            body: `${data.user}: ${data.msg || 'Sent something'}`,
+            icon: "/icons/app-icon.png",
+            badge: "/icons/app-icon.png",
+            data: {
+              url: "/chat"
+            }
+          });
         });
-      });
+      }
     }
   });
 </script>
+
 
 </body>
 </html>
