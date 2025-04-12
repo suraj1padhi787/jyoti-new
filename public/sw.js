@@ -1,12 +1,12 @@
-// ✅ Cache static files for offline use
+// ✅ Cache static files for offline use (but NOT /chat)
 self.addEventListener('install', e => {
   e.waitUntil(
-    caches.open('chat-cache').then(cache => {
+    caches.open('chat-cache-v2').then(cache => {
       return cache.addAll([
-        '/',
+        '/', // home page
         '/css/style.css',
         '/manifest.json'
-        // ❌ '/chat' deliberately removed to avoid stale HTML
+        // ❌ DO NOT cache /chat page to avoid blank refresh
       ]);
     })
   );
@@ -21,7 +21,7 @@ self.addEventListener('fetch', e => {
   );
 });
 
-// ✅ Handle push notifications (background messages)
+// ✅ Handle push notifications (when app is in background)
 self.addEventListener('push', e => {
   const data = e.data.json();
 
@@ -30,7 +30,7 @@ self.addEventListener('push', e => {
     icon: '/icons/app-icon.png',
     badge: '/icons/app-icon.png',
     data: {
-      url: data.url || '/' // Open app on click
+      url: data.url || '/' // URL to open when clicked
     }
   };
 
@@ -39,7 +39,7 @@ self.addEventListener('push', e => {
   );
 });
 
-// ✅ When user clicks on notification
+// ✅ When user clicks notification → open app
 self.addEventListener('notificationclick', function(e) {
   e.notification.close();
   e.waitUntil(
@@ -47,13 +47,13 @@ self.addEventListener('notificationclick', function(e) {
   );
 });
 
-// ✅ Optional: Clear old caches on version change
+// ✅ Force clear old caches if version changes
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys().then(cacheNames =>
       Promise.all(
         cacheNames.map(cache => {
-          if (cache !== 'chat-cache') {
+          if (cache !== 'chat-cache-v2') {
             return caches.delete(cache);
           }
         })
