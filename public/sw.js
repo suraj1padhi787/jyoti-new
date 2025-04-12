@@ -1,3 +1,4 @@
+// ✅ Cache for offline PWA support
 self.addEventListener('install', e => {
   e.waitUntil(
     caches.open('chat-cache').then(cache => {
@@ -19,11 +20,24 @@ self.addEventListener('fetch', e => {
   );
 });
 
-// ✅ Handle push notification
+// ✅ Push Notification Handler
 self.addEventListener('push', e => {
   const data = e.data.json();
-  self.registration.showNotification("Love se message aaya 💌", {
+  const options = {
     body: data.body,
-    icon: '/icons/app-icon.png'
-  });
+    icon: '/icons/app-icon.png',
+    badge: '/icons/app-icon.png',
+    data: { url: data.url || '/' }
+  };
+  e.waitUntil(
+    self.registration.showNotification("Love se message aaya 💌", options)
+  );
+});
+
+// ✅ On Notification Click → Open app
+self.addEventListener('notificationclick', function(e) {
+  e.notification.close();
+  e.waitUntil(
+    clients.openWindow(e.notification.data.url || '/')
+  );
 });
