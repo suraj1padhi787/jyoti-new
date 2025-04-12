@@ -125,7 +125,13 @@ io.on('connection', (socket) => {
   });
 
   socket.on('chat', (data) => {
-    const time = new Date().toLocaleTimeString();
+    const time = new Date().toLocaleString("en-IN", {
+  timeZone: "Asia/Kolkata",
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: true
+});  // ✅ correct IST time
+
     const status = 'sent';
 
     // 🟡 Ensure image is saved as it is (e.g., 'funny.mp4'), but path added in frontend
