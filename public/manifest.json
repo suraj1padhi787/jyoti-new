@@ -1,22 +1,22 @@
 {
-    "name": "Suraj & Jyoti Chat 💖",
-    "short_name": "LoveChat",
-    "start_url": "/chat",
-    "display": "standalone",
-    "background_color": "#1e293b",
-    "theme_color": "#6b3eff",
-    "orientation": "portrait",
-    "icons": [
-      {
-        "src": "/icons/app-icon.png",
-        "sizes": "192x192",
-        "type": "image/png"
-      },
-      {
-        "src": "/icons/app-icon.png",
-        "sizes": "512x512",
-        "type": "image/png"
-      }
-    ]
-  }
-  
+  "name": "LoveChat",
+  "short_name": "LoveChat",
+  "description": "Private chat app for Love ❤️",
+  "start_url": "/chat",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#6b3eff",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icons/app-icon.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    },
+    {
+      "src": "/icons/app-icon.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    }
+  ]
+}
