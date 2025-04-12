@@ -25,14 +25,59 @@
 
 <audio id="notify" src="https://notificationsounds.com/storage/sounds/file-sounds-1150-pristine.mp3"></audio>
 
+<style>
+  .top-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #6b3eff;
+    padding: 6px 10px;
+    border-radius: 0 0 10px 10px;
+    color: white;
+  }
+
+  .top-header a {
+    text-decoration: none;
+    color: white;
+    font-weight: 500;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 13px;
+  }
+
+  .logout-btn {
+    background-color: #ff4d4d;
+  }
+
+  .change-pic-btn {
+    background-color: #3b77ff;
+  }
+
+  .partner-status {
+    font-size: 12px;
+    color: #eee;
+    padding: 4px 10px;
+    background: #5c31ff;
+    border-radius: 0 0 10px 10px;
+  }
+</style>
+
 <div class="chat-container">
   <div class="header">
+    
+    <!-- Compact Header -->
     <div class="top-header">
-      <span>Chatting as <b><%= user %></b></span>
-      <a href="/profile" class="change-btn">Change Pic</a>
+      <a href="/logout" class="logout-btn">🚪</a>
+      <span style="font-size: 13px;">Chatting as <b><%= user %></b></span>
+      <a href="/profile" class="change-pic-btn">🖼️</a>
     </div>
-    <div class="partner-status">Partner Status: <span id="partner-status">Loading...</span></div>
+
+    <div class="partner-status">
+      Partner Status: <span id="partner-status">Loading...</span>
+    </div>
+
   </div>
+
 
   <div id="messages" class="messages" style="background-image: url('/profiles/<%= user === 'suraj' ? 'jyoti' : 'suraj' %>.png');">
     <% chats.forEach(chat => { %>
