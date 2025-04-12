@@ -459,7 +459,6 @@ socket.on('chat', (data) => {
   Seen by receiver
 </div>
 <script>
-  // Ask for permission on load
   if (Notification.permission !== "granted") {
     Notification.requestPermission();
   }
@@ -467,13 +466,17 @@ socket.on('chat', (data) => {
   const socket = io();
 
   socket.on("chat", function (data) {
-  if (Notification.permission === "granted" && data.user !== user) {
-    new Notification("New Message", {
-      body: `${data.user}: ${data.msg || 'Sent a file/voice/sticker'}`,
-      icon: "/icons/app-icon.png"
-    });
-  }
-});
+    alert("📢 " + data.user + ": " + (data.msg || "Media"));
+
+    if (Notification.permission === "granted" && data.user !== "<%= user %>") {
+      new Notification("New Message", {
+        body: `${data.user}: ${data.msg || 'Sent a file/voice/sticker'}`,
+        icon: "/icons/app-icon.png"
+      });
+    }
+  });
+</script>
+
 
 </script>
 
