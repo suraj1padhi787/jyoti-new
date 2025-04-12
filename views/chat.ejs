@@ -292,7 +292,12 @@
 });
 
 
-  window.onload = scrollToBottom;
+  window.onload = () => {
+  setTimeout(() => {
+    scrollToBottom();
+  }, 100); // wait for layout to settle
+};
+
   function uploadAnimatedSticker() {
   const input = document.getElementById('animated-sticker-upload');
   if (!input.files.length) return alert("Please select a file");
