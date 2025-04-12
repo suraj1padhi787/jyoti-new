@@ -460,6 +460,24 @@ socket.on('chat', (data) => {
 </div>
 
 
+<script>
+  if (Notification.permission !== "granted") {
+    Notification.requestPermission();
+  }
+
+  const socket = io();
+
+  socket.on("chat", function (data) {
+    alert("📢 " + data.user + ": " + (data.msg || "Media"));
+    
+    if (Notification.permission === "granted" && data.user !== "<%= user %>") {
+      new Notification("New Message", {
+        body: `${data.user}: ${data.msg || 'Sent a file'}`,
+        icon: "/icons/app-icon.png"
+      });
+    }
+  });
+</script>
 
 </script>
 
