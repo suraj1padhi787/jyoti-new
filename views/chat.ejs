@@ -459,19 +459,26 @@ socket.on('chat', (data) => {
   Seen by receiver
 </div>
 <script>
-  if (Notification.permission !== "granted") {
+  // Register service worker for push
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js');
+  }
+
+  if (Notification.permission !== 'granted') {
     Notification.requestPermission();
   }
 
-  const socket = io();
-
-  socket.on("chat", function (data) {
-    alert("📢 " + data.user + ": " + (data.msg || "Media"));
-
+  socket.on("chat", function(data) {
     if (Notification.permission === "granted" && data.user !== "<%= user %>") {
-      new Notification("New Message", {
-        body: `${data.user}: ${data.msg || 'Sent a file/voice/sticker'}`,
-        icon: "/icons/app-icon.png"
+      navigator.serviceWorker.ready.then(reg => {
+        reg.showNotification("Love se message aaya 💌", {
+          body: `${data.user}: ${data.msg || 'Sent something'}`,
+          icon: "/icons/app-icon.png",
+          badge: "/icons/app-icon.png",
+          data: {
+            url: "/chat" // App open path on notification click
+          }
+        });
       });
     }
   });
