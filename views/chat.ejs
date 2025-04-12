@@ -334,8 +334,11 @@ function fetchStickers() {
 }
 
 // Load stickers on refresh
+// Load stickers on refresh
 window.onload = () => {
   scrollToBottom();
+
+  // ✅ 1. Load Animated Stickers
   fetch('/get-animated-stickers')
     .then(res => res.json())
     .then(data => {
@@ -366,7 +369,48 @@ window.onload = () => {
         container.appendChild(wrapper);
       });
     });
+
+  // ✅ 2. Load Pending Offline Messages
+  fetch('/load-pending-messages')
+    .then(res => res.json())
+    .then(data => {
+      data.forEach(chat => {
+        const el = document.createElement('div');
+        el.id = "msg-" + chat.id;
+        el.className = chat.user === user ? 'message my' : 'message other';
+        el.dataset.msg = chat.msg || chat.image || chat.voice || '';
+        el.dataset.id = chat.id;
+
+        let media = '';
+        if (chat.voice) {
+          media = `<audio controls src='/uploads/${chat.voice}' style='width:100%'></audio>`;
+        } else if (chat.image && chat.image.endsWith('.mp4')) {
+          media = `<video controls autoplay src='/uploads/${chat.image}' class='chat-video'></video>`;
+        } else if (chat.image) {
+          media = `<img src='/uploads/${chat.image}' class='chat-img'>`;
+        } else {
+          media = `<span class='msg-text'>${chat.msg}</span>`;
+        }
+
+        el.innerHTML = `<div class="bubble">
+          <img src="/profiles/${chat.user}.png" class="profile-pic">
+          ${chat.reply ? `<div class='reply-indicator'>Reply to: ${chat.reply}</div>` : ''}
+          ${media}
+          <div class="time">${chat.time}</div>
+        </div>`;
+
+        messages.appendChild(el);
+      });
+
+      scrollToBottom();
+    });
+
+  // ✅ 3. Ask Notification Permission Once
+  if ('Notification' in window && Notification.permission !== 'granted') {
+    Notification.requestPermission();
+  }
 };
+
 const recordBtn = document.getElementById('record-btn');
 let mediaRecorder;
 let audioChunks = [];
@@ -404,9 +448,10 @@ recordBtn.addEventListener('click', async () => {
       recordBtn.innerText = "🎙️"; // Reset to mic icon
     };
   } else if (mediaRecorder.state === "recording") {
-    mediaRecorder.stop();
+    mediaRecorder.stop()
   }
 });
+
 // 🟡 Swipe / Long-press / Double-click to Reply
 function showReplyPreview(text) {
   const replyBox = document.getElementById('reply-indicator');
@@ -458,28 +503,6 @@ socket.on('chat', (data) => {
  background:#eee; padding:6px 12px; border-radius:8px; font-size:13px; box-shadow:0 2px 6px rgba(0,0,0,0.2); z-index:99;">
   Seen by receiver
 </div>
-
-
-<script>
-  if (Notification.permission !== "granted") {
-    Notification.requestPermission();
-  }
-
-  const socket = io();
-
-  socket.on("chat", function (data) {
-    alert("📢 " + data.user + ": " + (data.msg || "Media"));
-    
-    if (Notification.permission === "granted" && data.user !== "<%= user %>") {
-      new Notification("New Message", {
-        body: `${data.user}: ${data.msg || 'Sent a file'}`,
-        icon: "/icons/app-icon.png"
-      });
-    }
-  });
-</script>
-
-</script>
 
 </body>
 </html>
