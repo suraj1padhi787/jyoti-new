@@ -466,15 +466,15 @@ socket.on('chat', (data) => {
 
   const socket = io();
 
-  socket.on("chat message", function (data) {
-    // Show browser notification
-    if (Notification.permission === "granted") {
-      new Notification("New Message", {
-        body: `${data.username}: ${data.message}`,
-        icon: "/icons/app-icon.png"
-      });
-    }
-  });
+  socket.on("chat", function (data) {
+  if (Notification.permission === "granted" && data.user !== user) {
+    new Notification("New Message", {
+      body: `${data.user}: ${data.msg || 'Sent a file/voice/sticker'}`,
+      icon: "/icons/app-icon.png"
+    });
+  }
+});
+
 </script>
 
 </body>
