@@ -187,15 +187,16 @@ html, body {
   }
   
   .input-area input[type="text"] {
-    flex: 1;
-    padding: 10px 15px;
-    border: none;
-    border-radius: 25px;
-    background: #0f172a;
-    color: white;
-    font-size: 14px;
-    outline: none;
-  }
+  flex: 1;
+  padding: 10px 15px;
+  border: none;
+  border-radius: 25px;
+  outline: none;
+  background: #0f172a;  /* solid, no transparency */
+  color: white;
+  font-size: 14px;
+}
+
   
   .file-btn,
   #record-btn,
