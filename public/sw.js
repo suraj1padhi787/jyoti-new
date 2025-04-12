@@ -1,43 +1,25 @@
-// ✅ Cache for offline PWA support
-self.addEventListener('install', e => {
-  e.waitUntil(
-    caches.open('chat-cache').then(cache => {
-      return cache.addAll([
-        '/',
-        '/chat',
-        '/css/style.css',
-        '/manifest.json'
-      ]);
-    })
-  );
-});
+<script>
+  // Register service worker for push
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js');
+  }
 
-self.addEventListener('fetch', e => {
-  e.respondWith(
-    caches.match(e.request).then(response => {
-      return response || fetch(e.request);
-    })
-  );
-});
+  if (Notification.permission !== 'granted') {
+    Notification.requestPermission();
+  }
 
-// ✅ Push Notification Handler
-self.addEventListener('push', e => {
-  const data = e.data.json();
-  const options = {
-    body: data.body,
-    icon: '/icons/app-icon.png',
-    badge: '/icons/app-icon.png',
-    data: { url: data.url || '/' }
-  };
-  e.waitUntil(
-    self.registration.showNotification("Love se message aaya 💌", options)
-  );
-});
-
-// ✅ On Notification Click → Open app
-self.addEventListener('notificationclick', function(e) {
-  e.notification.close();
-  e.waitUntil(
-    clients.openWindow(e.notification.data.url || '/')
-  );
-});
+  socket.on("chat", function(data) {
+    if (Notification.permission === "granted" && data.user !== "<%= user %>") {
+      navigator.serviceWorker.ready.then(reg => {
+        reg.showNotification("Love se message aaya 💌", {
+          body: `${data.user}: ${data.msg || 'Sent something'}`,
+          icon: "/icons/app-icon.png",
+          badge: "/icons/app-icon.png",
+          data: {
+            url: "/chat" // App open path on notification click
+          }
+        });
+      });
+    }
+  });
+</script>
