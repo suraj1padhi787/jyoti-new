@@ -372,14 +372,12 @@ button {
     align-items: center;
     justify-content: space-between;
     gap: 8px;
-    padding: 10px;
-    padding-bottom: env(safe-area-inset-bottom); /* ✅ Added this */
+    padding: 10px 10px calc(env(safe-area-inset-bottom, 15px) + 5px); /* ✅ Bottom safe space */
     background: #1e293b;
     border-top: 1px solid #334155;
     box-sizing: border-box;
     position: relative;
-    border-bottom-left-radius: 10px;
-    border-bottom-right-radius: 10px;
+    z-index: 9;
 }
 
 
@@ -611,6 +609,16 @@ button {
 .input-area {
   overflow-x: hidden;
 }
+#image-info {
+    color: #34B7F1;
+    font-size: 13px;
+    padding: 5px 15px;
+    margin-bottom: 5px;
+    transition: all 0.3s ease-in-out;
+    display: block;
+    text-align: left;
+}
+
 
 
       
