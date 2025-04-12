@@ -503,6 +503,30 @@ socket.on('chat', (data) => {
  background:#eee; padding:6px 12px; border-radius:8px; font-size:13px; box-shadow:0 2px 6px rgba(0,0,0,0.2); z-index:99;">
   Seen by receiver
 </div>
+<script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js');
+  }
+
+  if (Notification.permission !== 'granted') {
+    Notification.requestPermission();
+  }
+
+  socket.on("chat", function(data) {
+    if (Notification.permission === "granted" && data.user !== "<%= user %>") {
+      navigator.serviceWorker.ready.then(reg => {
+        reg.showNotification("Love se message aaya 💌", {
+          body: `${data.user}: ${data.msg || 'Sent something'}`,
+          icon: "/icons/app-icon.png",
+          badge: "/icons/app-icon.png",
+          data: {
+            url: "/chat"
+          }
+        });
+      });
+    }
+  });
+</script>
 
 </body>
 </html>
