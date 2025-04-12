@@ -108,6 +108,8 @@ button {
     gap: 5px;
     box-shadow: 0 2px 5px rgba(0,0,0,0.3);
     padding-top: env(safe-area-inset-top);
+    z-index: 11;        /* ✅ Add this */
+    position: relative;
 
 }
 
@@ -254,13 +256,13 @@ button {
 
 /* Overlay */
 .messages::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.4); /* Blackish transparent */
-    backdrop-filter: blur(4px);
-    z-index: 0;
-    border-radius: 10px;
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(4px);
+  z-index: 0;
+  border-radius: 10px;
 }
 
 .message {
