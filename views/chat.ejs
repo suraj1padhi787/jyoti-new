@@ -533,6 +533,22 @@ socket.on('chat', (data) => {
       }
     }
   });
+// Add this in your client-side JS (chat.ejs script section)
+
+// When user comes back to tab or app resumes
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) {
+    // User is back to tab — emit seen for all messages again
+    document.querySelectorAll(".message.other").forEach(msg => {
+      const id = msg.dataset.id;
+      const status = msg.querySelector(".status");
+      if (status && status.innerText !== "👀") {
+        socket.emit("seen", parseInt(id));
+      }
+    });
+  }
+});
+
 </script>
 
 
