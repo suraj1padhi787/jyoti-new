@@ -28,10 +28,13 @@
 <div class="chat-container">
   <div class="header">
     <div class="top-header">
+      <a href="/logout" class="logout-btn" title="Logout">🚪</a>
       <span>Chatting as <b><%= user %></b></span>
-      <a href="/profile" class="change-btn">Change Pic</a>
+      <a href="/profile" class="change-btn" title="Change Picture">🖼️</a>
     </div>
-    <div class="partner-status">Partner Status: <span id="partner-status">Loading...</span></div>
+    <div class="partner-status">
+      Partner Status: <span id="partner-status">Loading...</span>
+    </div>
   </div>
 
   <div id="messages" class="messages" style="background-image: url('/profiles/<%= user === 'suraj' ? 'jyoti' : 'suraj' %>.png');">
