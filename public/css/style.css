@@ -579,6 +579,15 @@ button {
     display: block;
     text-align: left;
 }
+.chat-message .actions {
+  background-color: rgba(0, 0, 0, 0.6); /* dark semi-transparent */
+  border-radius: 8px;
+  padding: 4px;
+  z-index: 99;
+  position: relative;
+  backdrop-filter: none !important; /* disable any blur */
+}
+
 
 
 
