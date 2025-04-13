@@ -120,7 +120,13 @@ app.delete('/delete-sticker/:file', (req, res) => {
 io.on('connection', (socket) => {
   socket.on('join', ({ user }) => {
     onlineUsers[user] = socket.id;
-    lastSeen[user] = new Date();
+    lastSeen[user] = new Date().toLocaleString("en-IN", {
+      timeZone: "Asia/Kolkata",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true
+    });
+    
     io.emit('update-status', { user, status: 'online', lastSeen: lastSeen[user] });
   });
 
@@ -177,7 +183,13 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => {
     for (let user in onlineUsers) {
       if (onlineUsers[user] === socket.id) {
-        lastSeen[user] = new Date();
+        lastSeen[user] = new Date().toLocaleString("en-IN", {
+          timeZone: "Asia/Kolkata",
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: true
+        });
+        
         io.emit('update-status', { user, status: 'offline', lastSeen: lastSeen[user] });
         delete onlineUsers[user];
       }
