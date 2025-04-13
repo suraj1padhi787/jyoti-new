@@ -587,6 +587,33 @@ button {
   position: relative;
   backdrop-filter: none !important; /* disable any blur */
 }
+.actions {
+  position: relative;
+  z-index: 9;
+  background: rgba(0, 0, 0, 0.5); /* dark transparent */
+  border-radius: 8px;
+  padding: 4px 6px;
+  display: flex;
+  gap: 6px;
+  backdrop-filter: none !important;
+  margin-top: 6px;
+}
+
+.actions button {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 6px;
+  transition: background 0.2s;
+}
+
+.actions button:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
 
 
 
