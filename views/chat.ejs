@@ -1,556 +1,208 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <link rel="manifest" href="/manifest.json">
-  <link rel="icon" type="image/png" href="/icons/app-icon.png">
-  <meta name="theme-color" content="#6b3eff">
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-  <meta name="theme-color" content="#6b3eff">
-  <title>Private Chat - <%= user %></title>
-  <link rel="stylesheet" href="/css/style.css">
-  <script src="/socket.io/socket.io.js"></script>
-  <style>
-    .chat-sticker {
-      width: 160px;
-      height: auto;
-      border-radius: 12px;
-      object-fit: cover;
-      display: block;
-      background: #000;
-      pointer-events: auto;
-    }
-  </style>
-</head>
-<body>
+const express = require('express');
+const session = require('express-session');
+const fileUpload = require('express-fileupload');
+const fs = require('fs');
+const path = require('path');
+const sqlite3 = require('sqlite3').verbose();
 
-<audio id="notify" src="https://notificationsounds.com/storage/sounds/file-sounds-1150-pristine.mp3"></audio>
+const app = express();
+const http = require('http').createServer(app);
+const io = require('socket.io')(http);
 
-<div class="chat-container">
-  <div class="header">
-    <div class="top-header">
-      <a href="/logout" class="logout-btn" title="Logout">🚪</a>
-      <span>Chatting as <b><%= user %></b></span>
-      <a href="/profile" class="change-btn" title="Change Picture">🖼️</a>
-    </div>
-    <div class="partner-status">
-      Partner Status: <span id="partner-status">Loading...</span>
-    </div>
-  </div>
+// DB Setup
+const db = new sqlite3.Database('./chat.db');
+db.serialize(() => {
+  db.run(`CREATE TABLE IF NOT EXISTS messages (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user TEXT, msg TEXT, image TEXT, voice TEXT,
+    time TEXT, reply TEXT, status TEXT
+  )`);
+});
 
-  <div id="messages" class="messages" style="background-image: url('/profiles/<%= user === 'suraj' ? 'jyoti' : 'suraj' %>.png');">
-    <% chats.forEach(chat => { %>
-      <div class="message <%= chat.user === user ? 'my' : 'other' %>" id="msg-<%= chat.id %>" data-id="<%= chat.id %>" data-msg="<%= chat.msg %>">
-        <div class="bubble">
-          <img src="/profiles/<%= chat.user %>.png" class="profile-pic">
-          <% if(chat.reply){ %>
-            <div class="reply-indicator">Reply to: <%= chat.reply %></div>
-          <% } %>
-          <% if(chat.voice) { %>
-            <audio controls src="/uploads/<%= chat.voice %>" style="width:100%;"></audio>
-          <% } else if(chat.image && chat.image.endsWith('.mp4') && !chat.image.includes('uploads')) { %>
-            <video autoplay loop muted playsinline src="/stickers/<%= chat.image %>" class="chat-sticker"></video>
-          <% } else if(chat.image && chat.image.endsWith('.mp4')) { %>
-            <video controls autoplay src="/uploads/<%= chat.image %>" class="chat-video"></video>
-          <% } else if(chat.image) { %>
-            <img src="/uploads/<%= chat.image %>" class="chat-img">
-          <% } else { %>
-            <span class="msg-text"><%= chat.msg %></span>
-          <% } %>
-          <div class="time">
-            <%= chat.time %>
-            <% if (chat.user === user) { %>
-              <span class="status" id="status-<%= chat.id %>">
-                <% if (chat.status === 'seen') { %>👀<% } else if (chat.status === 'delivered') { %>📬<% } else { %>⏱️<% } %>
-              </span>
-            <% } %>
-          </div>
-          <% if(chat.user === user) { %>
-            <div class="actions">
-              <% if(!chat.voice && !chat.image) { %>
-                <button onclick="editMessage(<%= chat.id %>, `<%- (chat.msg || '').replace(/`/g, '\\`') %>`)">✏️</button>
-              <% } %>
-              <button onclick="deleteMessage(<%= chat.id %>)">🗑️</button>
-            </div>
-          <% } %>
-        </div>
-      </div>
-    <% }) %>
-  </div>
+const users = JSON.parse(fs.readFileSync('./users.json', 'utf8'));
 
-  <div id="typing-status" class="typing"></div>
-  <div id="reply-indicator" style="display:none; margin-bottom:5px; color:#555; font-size:13px;"></div>
+// Middleware
+app.use(express.urlencoded({ extended: true }));
+app.use(fileUpload());
+app.use(express.static('public'));
+app.set('view engine', 'ejs');
+app.use(session({ secret: 'chatappsecret', resave: false, saveUninitialized: true }));
 
-  <div id="animated-stickers-panel" style="display:none; padding:10px; background:#fff; border-top:1px solid #ccc;">
-    <div style="display:flex; justify-content:space-between; align-items:center;">
-      <b>Animated Stickers</b>
-      <button onclick="toggleStickerPanel()">❌</button>
-    </div>
-    <div style="margin:10px 0;">
-      <input type="file" id="animated-sticker-upload" accept="video/mp4,image/gif" />
-      <button onclick="uploadAnimatedSticker()">➕ Add Sticker</button>
-    </div>
-    <div id="animated-sticker-list" style="display:flex; flex-wrap:wrap; gap:10px;"></div>
-  </div>
+let onlineUsers = {};
+let lastSeen = { suraj: 'Offline', jyoti: 'Offline' };
 
-  <div style="text-align:center; margin-top:10px;">
-    <button onclick="toggleStickerPanel()" style="background:#6b3eff; color:white; border:none; padding:5px 12px; border-radius:8px;">🎞️ Animated Stickers</button>
-  </div>
+// Routes
+app.get('/', (req, res) => res.render('login'));
 
-  <form id="send-form" class="input-area">
-    <input type="text" id="msg" autocomplete="off" placeholder="Type a message..." />
-    <label for="image-upload" class="file-btn">📷</label>
-    <input type="file" id="image-upload" accept="image/*,video/mp4" style="display: none;">
-    <button type="button" id="record-btn">🎙️</button>
-    <button type="submit">➤</button>
-  </form>
-  <span id="image-info"></span>
-</div>
-
-<div id="seen-popup" style="display:none; position:fixed; bottom:70px; left:50%; transform:translateX(-50%); background:#eee; padding:6px 12px; border-radius:8px; font-size:13px; box-shadow:0 2px 6px rgba(0,0,0,0.2); z-index:99;">Seen by receiver</div>
-
-<script>
-
-
-  const socket = io();
-  const user = '<%= user %>';
-  const form = document.getElementById('send-form');
-  const msgInput = document.getElementById('msg');
-  const imageUpload = document.getElementById('image-upload');
-  const messages = document.getElementById('messages');
-  const typingStatus = document.getElementById('typing-status');
-  const notify = document.getElementById('notify');
-  const seenPopup = document.getElementById('seen-popup');
-  let replyTo = null;
-
-  function scrollToBottom() {
-    messages.scrollTop = messages.scrollHeight;
+app.post('/login', (req, res) => {
+  const { username, password } = req.body;
+  if (users[username] && users[username] === password) {
+    req.session.user = username;
+    res.redirect('/chat');
+  } else {
+    res.send('Invalid credentials');
   }
+});
 
-  function toggleStickerPanel() {
-    const panel = document.getElementById('animated-stickers-panel');
-    panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
-  }
+app.get('/logout', (req, res) => {
+  req.session.destroy(() => res.redirect('/'));
+});
 
-  imageUpload.addEventListener('change', () => {
-    const info = document.getElementById('image-info');
-    info.innerHTML = imageUpload.files.length > 0 ? `📷 Selected: <b>${imageUpload.files[0].name}</b>` : '';
-    info.style.opacity = imageUpload.files.length > 0 ? 1 : 0;
+app.get('/chat', (req, res) => {
+  const user = req.session.user;
+  if (!user || !users[user]) return res.redirect('/');
+  db.all("SELECT * FROM messages", [], (err, rows) => {
+    res.render('chat', { user, lastSeen, chats: rows });
   });
+});
 
-  form.addEventListener('submit', (e) => {
+app.get('/profile', (req, res) => {
+  const user = req.session.user;
+  if (!user || !users[user]) return res.redirect('/');
+  res.render('profile', { user });
+});
+
+app.post('/profile', (req, res) => {
+  const user = req.session.user;
+  if (!req.files?.pic || !user) return res.redirect('/');
+  const filename = `${user}.png`;
+  req.files.pic.mv(__dirname + `/public/profiles/${filename}`, () => {
+    res.redirect('/chat');
+  });
+});
+
+app.post('/upload', (req, res) => {
+  if (!req.files?.file) return res.send({ status: 'error' });
+  const file = req.files.file;
+  const name = Date.now() + '_' + file.name;
+  file.mv(__dirname + '/public/uploads/' + name, () => {
+    res.send({ status: 'success', filename: name });
+  });
+});
+
+app.post('/upload-voice', (req, res) => {
+  if (!req.files?.voice) return res.send({ status: 'error' });
+  const name = Date.now() + '_voice.webm';
+  req.files.voice.mv(__dirname + '/public/uploads/' + name, () => {
+    res.send({ status: 'success', filename: name });
+  });
+});
+
+// ✅ Sticker Routes
+app.get('/get-animated-stickers', (req, res) => {
+  const dir = path.join(__dirname, '/public/stickers');
+  fs.readdir(dir, (err, files) => {
+    if (err) return res.json([]);
+    res.json(files);
+  });
+});
+app.post('/upload-animated-sticker', (req, res) => {
+  const user = req.session.user;
+  if (!user || !req.files?.sticker) return res.send({ status: 'error', msg: 'Login required or no file' });
+  const file = req.files.sticker;
+  const name = Date.now() + '_' + file.name;
+  file.mv(__dirname + '/public/stickers/' + name, () => {
+    res.send({ status: 'success', filename: name });
+  });
+});
+
+
+app.delete('/delete-sticker/:file', (req, res) => {
+  const file = req.params.file;
+  const filepath = path.join(__dirname, 'public', 'stickers', file);
+  fs.unlink(filepath, err => {
+    if (err) return res.status(500).send('Failed to delete');
+    res.send('Deleted');
+  });
+});
+
+// ✅ SOCKET.IO Setup
+io.on('connection', (socket) => {
+  socket.on('join', ({ user }) => {
+    onlineUsers[user] = socket.id;
+    lastSeen[user] = new Date().toLocaleString("en-IN", {
+      timeZone: "Asia/Kolkata",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true
+    });
     
-    e.preventDefault();
-    if (imageUpload.files.length > 0) {
-      const formData = new FormData();
-      formData.append('file', imageUpload.files[0]);
-      fetch('/upload', { method: 'POST', body: formData })
-        .then(res => res.json())
-        .then(data => {
-          socket.emit('chat', { user, image: data.filename, reply: replyTo });
-          imageUpload.value = '';
-          document.getElementById('image-info').innerText = '';
-          replyTo = null;
-          document.getElementById('reply-indicator').style.display = 'none';
-          document.getElementById('msg-send').play();
-          
-
-        });
-    } else if (msgInput.value.trim()) {
-      socket.emit('chat', { user, msg: msgInput.value, reply: replyTo });
-      msgInput.value = '';
-      replyTo = null;
-      document.getElementById('reply-indicator').style.display = 'none';
-      document.getElementById('msg-send').play(); // ✅ add this
-      socket.emit('stop-typing', { user });
-    }
+    io.emit('update-status', { user, status: 'online', lastSeen: lastSeen[user] });
   });
+  socket.on('calling', (data) => {
+    socket.broadcast.emit('incoming-call', data);
+  });
+  socket.on('reject-call', () => {
+    console.log('Call rejected by receiver.');
+  });
+  
 
   socket.on('chat', (data) => {
-    const el = document.createElement('div');
-    if (data.user !== user) {
-  document.getElementById('msg-receive').play();
-}
+    const time = new Date().toLocaleString("en-IN", {
+  timeZone: "Asia/Kolkata",
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: true
+});  // ✅ correct IST time
 
-    el.id = "msg-" + data.id;
-    el.className = data.user === user ? 'message my' : 'message other';
-    el.dataset.msg = data.msg || data.image || data.voice || '';
-    el.dataset.id = data.id;
+    const status = 'sent';
 
-    let media = '';
-    if (data.voice) media = `<audio controls src='/uploads/${data.voice}' style='width:100%'></audio>`;
-    else if (data.image && data.image.endsWith('.mp4') && !data.image.includes('uploads')) {
-      media = `<video autoplay loop muted playsinline src='/stickers/${data.image}' class='chat-sticker'></video>`;
-    }
-    else if (data.image && data.image.endsWith('.mp4')) {
-      media = `<video controls autoplay src='/uploads/${data.image}' class='chat-video'></video>`;
-    }
-    else if (data.image) media = `<img src='/uploads/${data.image}' class='chat-img'>`;
-    else media = `<span class='msg-text'>${data.msg}</span>`;
-
-    el.innerHTML = `<div class="bubble">
-      <img src="/profiles/${data.user}.png" class="profile-pic">
-      ${data.reply ? `<div class='reply-indicator'>Reply to: ${data.reply}</div>` : ''}
-      ${media}
-      <div class="time">${data.time} ${data.user === user ? `<span class="status" id="status-${data.id}">⏱️</span>` : ''}</div>
-      ${data.user === user ? `<div class="actions">
-        ${!data.voice && !data.image ? `<button onclick="editMessage(${data.id}, ${JSON.stringify(data.msg || '')})">✏️</button>` : ''}
-        <button onclick="deleteMessage(${data.id})">🗑️</button>
-      </div>` : ''}
-    </div>`;
-    messages.appendChild(el);
-    scrollToBottom();
-
-    if (data.user !== user) {
-      notify.play();
-      socket.emit('seen', parseInt(data.id));
-    }
+    // 🟡 Ensure image is saved as it is (e.g., 'funny.mp4'), but path added in frontend
+    db.run("INSERT INTO messages (user, msg, image, voice, reply, time, status) VALUES (?,?,?,?,?,?,?)",
+      [data.user, data.msg || null, data.image || null, data.voice || null, data.reply || null, time, status],
+      function () {
+        data.id = this.lastID;
+        data.time = time;
+        data.status = status;
+        io.emit('chat', data);
+      });
   });
 
-  function deleteMessage(id) {
-    if (confirm("Delete message?")) socket.emit('delete-message', { id, user });
-  }
-
-  socket.on('delete-message', (data) => {
-    const el = document.getElementById("msg-" + data.id);
-    if (el) el.remove();
+  socket.on('seen', (id) => {
+    db.get("SELECT * FROM messages WHERE id = ?", [id], (err, msg) => {
+      if (msg?.status !== 'seen') {
+        db.run("UPDATE messages SET status = ? WHERE id = ?", ['seen', id]);
+        io.emit('status-update', { id, status: 'seen' });
+      }
+    });
   });
-
-  function editMessage(id, oldMsg) {
-    const newMsg = prompt("Edit Message:", oldMsg);
-    if (newMsg && newMsg.trim()) socket.emit('edit-message', { id, newMsg, user });
-  }
 
   socket.on('edit-message', (data) => {
-    const el = document.querySelector(`#msg-${data.id} .msg-text`);
-    if (el) el.innerText = data.newMsg;
+    db.run("UPDATE messages SET msg = ? WHERE id = ? AND user = ?", [data.newMsg, data.id, data.user], () => {
+      io.emit('edit-message', data);
+    });
   });
 
-  msgInput.addEventListener('input', () => {
-    socket.emit(msgInput.value ? 'typing' : 'stop-typing', { user });
+  socket.on('delete-message', (data) => {
+    db.run("DELETE FROM messages WHERE id = ? AND user = ?", [data.id, data.user], () => {
+      io.emit('delete-message', data);
+    });
   });
 
   socket.on('typing', (data) => {
-    typingStatus.innerText = data.user + ' is typing...';
-  });
-  socket.on('stop-typing', () => {
-    typingStatus.innerText = '';
+    socket.broadcast.emit('typing', data);
   });
 
-  socket.on('status-update', ({ id, status }) => {
-  const el = document.getElementById('status-' + id);
-  if (el) el.innerText = status === 'seen' ? '👀' : status === 'delivered' ? '📬' : '⏱️';
-
-  if (status === 'seen') {
-    const seenPopup = document.getElementById('seen-popup');
-    seenPopup.style.display = 'block';
-    setTimeout(() => {
-      seenPopup.style.display = 'none';
-    }, 1500);
-  }
-});
-
-
-  window.onload = scrollToBottom;
-  function uploadAnimatedSticker() {
-  const input = document.getElementById('animated-sticker-upload');
-  if (!input.files.length) return alert("Please select a file");
-  const file = input.files[0];
-  if (file.size > 20 * 1024 * 1024) return alert("Max size 20MB");
-
-  const formData = new FormData();
-  formData.append('sticker', file);
-
-  fetch('/upload-animated-sticker', {
-    method: 'POST',
-    body: formData
-  })
-  .then(res => res.json())
-  .then(data => {
-    if (data.status === 'success') {
-      const container = document.getElementById('animated-sticker-list');
-      const wrapper = document.createElement('div');
-
-      const el = document.createElement('video');
-      el.src = `/stickers/${data.filename}`;
-      el.className = 'chat-sticker';
-      el.muted = true;
-      el.autoplay = true;
-      el.loop = true;
-      el.playsInline = true;
-      el.style.cursor = 'pointer';
-
-      el.onclick = () => socket.emit('chat', { user, image: data.filename });
-
-      const del = document.createElement('button');
-      del.textContent = '🗑️';
-      del.onclick = () => {
-        fetch('/delete-sticker/' + data.filename, { method: 'DELETE' })
-          .then(() => wrapper.remove());
-          if (data.status === 'success') {
-  // ... existing code
-  fetchStickers(); // ⬅️ Add this line
-}
-
-      };
-
-      wrapper.appendChild(el);
-      wrapper.appendChild(del);
-      container.appendChild(wrapper);
-      input.value = '';
-    } else {
-      alert("Upload failed: " + (data.msg || 'Unknown error'));
-    }
-  })
-  .catch(err => alert("Sticker upload error: " + err.message));
-}
-function fetchStickers() {
-  fetch('/get-animated-stickers')
-    .then(res => res.json())
-    .then(data => {
-      const container = document.getElementById('animated-sticker-list');
-      container.innerHTML = '';
-      data.forEach(file => {
-        const wrapper = document.createElement('div');
-
-        const el = document.createElement('video');
-        el.src = `/stickers/${file}`;
-        el.className = 'chat-sticker';
-        el.muted = true;
-        el.autoplay = true;
-        el.loop = true;
-        el.playsInline = true;
-        el.style.cursor = 'pointer';
-        el.onclick = () => socket.emit('chat', { user, image: file });
-
-        const del = document.createElement('button');
-        del.textContent = '🗑️';
-        del.onclick = () => {
-          fetch('/delete-sticker/' + file, { method: 'DELETE' })
-            .then(() => wrapper.remove());
-        };
-
-        wrapper.appendChild(el);
-        wrapper.appendChild(del);
-        container.appendChild(wrapper);
-      });
-    });
-}
-
-// Load stickers on refresh
-// Load stickers on refresh
-window.onload = () => {
-  scrollToBottom();
-
-  // ✅ 1. Load Animated Stickers
-  fetch('/get-animated-stickers')
-    .then(res => res.json())
-    .then(data => {
-      const container = document.getElementById('animated-sticker-list');
-      container.innerHTML = '';
-      data.forEach(file => {
-        const wrapper = document.createElement('div');
-        const el = document.createElement('video');
-        el.src = `/stickers/${file}`;
-        el.className = 'chat-sticker';
-        el.muted = true;
-        el.autoplay = true;
-        el.loop = true;
-        el.playsInline = true;
-        el.style.cursor = 'pointer';
-
-        el.onclick = () => socket.emit('chat', { user, image: file });
-
-        const del = document.createElement('button');
-        del.textContent = '🗑️';
-        del.onclick = () => {
-          fetch('/delete-sticker/' + file, { method: 'DELETE' })
-            .then(() => wrapper.remove());
-        };
-
-        wrapper.appendChild(el);
-        wrapper.appendChild(del);
-        container.appendChild(wrapper);
-      });
-    });
-
-  // ✅ 2. Load Pending Offline Messages
-  fetch('/load-pending-messages')
-    .then(res => res.json())
-    .then(data => {
-      data.forEach(chat => {
-        const el = document.createElement('div');
-        el.id = "msg-" + chat.id;
-        el.className = chat.user === user ? 'message my' : 'message other';
-        el.dataset.msg = chat.msg || chat.image || chat.voice || '';
-        el.dataset.id = chat.id;
-
-        let media = '';
-        if (chat.voice) {
-          media = `<audio controls src='/uploads/${chat.voice}' style='width:100%'></audio>`;
-        } else if (chat.image && chat.image.endsWith('.mp4')) {
-          media = `<video controls autoplay src='/uploads/${chat.image}' class='chat-video'></video>`;
-        } else if (chat.image) {
-          media = `<img src='/uploads/${chat.image}' class='chat-img'>`;
-        } else {
-          media = `<span class='msg-text'>${chat.msg}</span>`;
-        }
-
-        el.innerHTML = `<div class="bubble">
-          <img src="/profiles/${chat.user}.png" class="profile-pic">
-          ${chat.reply ? `<div class='reply-indicator'>Reply to: ${chat.reply}</div>` : ''}
-          ${media}
-          <div class="time">${chat.time}</div>
-        </div>`;
-
-        messages.appendChild(el);
-      });
-
-      scrollToBottom();
-    });
-
-  // ✅ 3. Ask Notification Permission Once
-  if ('Notification' in window && Notification.permission !== 'granted') {
-    Notification.requestPermission();
-  }
-};
-
-const recordBtn = document.getElementById('record-btn');
-let mediaRecorder;
-let audioChunks = [];
-
-recordBtn.addEventListener('click', async () => {
-  if (!mediaRecorder || mediaRecorder.state === "inactive") {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    mediaRecorder = new MediaRecorder(stream);
-    mediaRecorder.start();
-    recordBtn.innerText = "⏹️"; // Change to stop icon
-
-    audioChunks = [];
-    mediaRecorder.ondataavailable = e => {
-      if (e.data.size > 0) {
-        audioChunks.push(e.data);
-      }
-    };
-
-    mediaRecorder.onstop = () => {
-      const blob = new Blob(audioChunks, { type: 'audio/webm' });
-      const formData = new FormData();
-      formData.append('voice', blob, 'voice.webm');
-
-      fetch('/upload-voice', {
-        method: 'POST',
-        body: formData
-      })
-      .then(res => res.json())
-      .then(data => {
-        if (data.status === 'success') {
-          socket.emit('chat', { user, voice: data.filename });
-        }
-      });
-
-      recordBtn.innerText = "🎙️"; // Reset to mic icon
-    };
-  } else if (mediaRecorder.state === "recording") {
-    mediaRecorder.stop()
-  }
-});
-
-// 🟡 Swipe / Long-press / Double-click to Reply
-function showReplyPreview(text) {
-  const replyBox = document.getElementById('reply-indicator');
-  replyBox.innerHTML = `Replying to: <b>${text}</b> <button onclick="cancelReply()">❌</button>`;
-  replyBox.style.display = 'block';
-  replyTo = text;
-}
-
-function cancelReply() {
-  replyTo = null;
-  const replyBox = document.getElementById('reply-indicator');
-  replyBox.style.display = 'none';
-  replyBox.innerHTML = '';
-}
-
-// Auto-attach listener to every message (on load & new message)
-function attachReplyListeners() {
-  document.querySelectorAll('.message').forEach(msg => {
-    if (!msg.hasAttribute('data-listened')) {
-      msg.setAttribute('data-listened', 'true');
-      const msgText = msg.getAttribute('data-msg') || '(Media)';
-      msg.addEventListener('contextmenu', (e) => {
-        e.preventDefault();
-        showReplyPreview(msgText);
-      });
-      msg.addEventListener('dblclick', () => {
-        showReplyPreview(msgText);
-      });
-    }
+  socket.on('stop-typing', (data) => {
+    socket.broadcast.emit('stop-typing', data);
   });
-}
 
-window.addEventListener('load', () => {
-  scrollToBottom();
-  attachReplyListeners();
-});
-
-socket.on('chat', (data) => {
-  // ... your existing code to append message ...
-  attachReplyListeners(); // 🔁 Add this here to enable reply on new messages
-});
-
-
-
-</script>
-<audio id="msg-receive" src="/sounds/receive.mp3"></audio>
-<audio id="msg-send" src="/sounds/send.mp3"></audio>
-<div id="seen-popup" style="display:none; position:fixed; bottom:70px; left:50%; transform:translateX(-50%);
- background:#eee; padding:6px 12px; border-radius:8px; font-size:13px; box-shadow:0 2px 6px rgba(0,0,0,0.2); z-index:99;">
-  Seen by receiver
-</div>
-<script>
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/sw.js');
-  }
-
-  if (Notification.permission !== 'granted') {
-    Notification.requestPermission();
-  }
-
-  // Only show notification when app is in background
-  socket.on("chat", function(data) {
-    if (Notification.permission === "granted" && data.user !== "<%= user %>") {
-      // ✅ Check if app is hidden (i.e. in background)
-      if (document.hidden) {
-        navigator.serviceWorker.ready.then(reg => {
-          reg.showNotification("Love se message aaya 💌", {
-            body: `${data.user}: ${data.msg || 'Sent something'}`,
-            icon: "/icons/app-icon.png",
-            badge: "/icons/app-icon.png",
-            data: {
-              url: "/chat"
-            }
-          });
+  socket.on('disconnect', () => {
+    for (let user in onlineUsers) {
+      if (onlineUsers[user] === socket.id) {
+        lastSeen[user] = new Date().toLocaleString("en-IN", {
+          timeZone: "Asia/Kolkata",
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: true
         });
+        
+        io.emit('update-status', { user, status: 'offline', lastSeen: lastSeen[user] });
+        delete onlineUsers[user];
       }
     }
   });
-// Add this in your client-side JS (chat.ejs script section)
-
-// When user comes back to tab or app resumes
-document.addEventListener("visibilitychange", () => {
-  if (!document.hidden) {
-    // User is back to tab — emit seen for all messages again
-    document.querySelectorAll(".message.other").forEach(msg => {
-      const id = msg.dataset.id;
-      const status = msg.querySelector(".status");
-      if (status && status.innerText !== "👀") {
-        socket.emit("seen", parseInt(id));
-      }
-    });
-  }
 });
 
-</script>
-
-
-</body>
-</html>
+// Start
+http.listen(3000, () => console.log('✅ Server running at http://localhost:3000'));
