@@ -129,6 +129,13 @@ io.on('connection', (socket) => {
     
     io.emit('update-status', { user, status: 'online', lastSeen: lastSeen[user] });
   });
+  socket.on('calling', (data) => {
+    socket.broadcast.emit('incoming-call', data);
+  });
+  socket.on('reject-call', () => {
+    console.log('Call rejected by receiver.');
+  });
+  
 
   socket.on('chat', (data) => {
     const time = new Date().toLocaleString("en-IN", {
